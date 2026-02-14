@@ -2,7 +2,6 @@
 
 A high-performance, immersive travel booking experience built with **Next.js 14**, designed to captivate users with cinematic animations, smooth interactions, and a premium aesthetic.
 
-![Project Thumbnail](https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?q=80&w=2070&auto=format&fit=crop)
 
 ## 🚀 Technical Architecture
 
