@@ -21,22 +21,19 @@ export default function ContactForm() {
     const onSubmit = async (data: z.infer<typeof formSchema>) => {
         setLoading(true);
         try {
-            // 1. Init payment
-            const res = await fetch('/api/checkout', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ amount: 5000 }), // Mock amount
-            });
-            const order = await res.json();
+            // Mock order for demo (API routes not available on static hosting)
+            const order = {
+                id: "order_mock_" + Date.now(),
+                amount: 500000,
+                currency: "USD"
+            };
 
-            // 2. Load Razorpay
             const options = {
                 key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_1234567890",
                 amount: order.amount,
                 currency: order.currency,
                 name: "Travel Co.",
                 description: "Luxury Experience Deposit",
-                order_id: order.id.startsWith("order_mock") ? undefined : order.id, // Handle mock
                 handler: function (response: any) {
                     alert(`Payment Successful: ${response.razorpay_payment_id}`);
                 },

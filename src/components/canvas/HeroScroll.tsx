@@ -1,74 +1,140 @@
 "use client";
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useCanvasScroll } from '@/hooks/useCanvasScroll';
+
+const TOTAL_FRAMES = 278;
+const BATCH_SIZE = 20;
+const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || '';
+
+function getFramePath(index: number): string {
+    const frameNumber = (index + 1).toString().padStart(3, '0');
+    return `${BASE_PATH}/sequence-1/ezgif-frame-${frameNumber}.jpg`;
+}
 
 export default function HeroScroll() {
     const containerRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
-    const [images, setImages] = useState<HTMLImageElement[]>([]);
-    const [loaded, setLoaded] = useState(false);
-    const totalFrames = 278; // Total frames in sequence-1
+    const imagesRef = useRef<(HTMLImageElement | null)[]>(new Array(TOTAL_FRAMES).fill(null));
+    const [firstFrameReady, setFirstFrameReady] = useState(false);
+    const [loadProgress, setLoadProgress] = useState(0);
+    const [allLoaded, setAllLoaded] = useState(false);
+    const isVisibleRef = useRef(true);
+    const rafRef = useRef<number>(0);
 
-    // Load images
+    // Load images progressively in batches
     useEffect(() => {
-        const loadImages = async () => {
-            const imgs: HTMLImageElement[] = [];
-            const loadedImages = new Array(totalFrames);
-            let loadedCount = 0;
+        let cancelled = false;
 
-            for (let i = 0; i < totalFrames; i++) {
+        const loadImage = (index: number): Promise<void> => {
+            return new Promise((resolve) => {
+                if (imagesRef.current[index]) {
+                    resolve();
+                    return;
+                }
                 const img = new Image();
-                const frameNumber = (i + 1).toString().padStart(3, '0');
-                img.src = `/sequence-1/ezgif-frame-${frameNumber}.jpg`;
+                img.src = getFramePath(index);
                 img.onload = () => {
-                    loadedCount++;
-                    loadedImages[i] = img;
-                    if (loadedCount === totalFrames) {
-                        setImages(loadedImages);
-                        setLoaded(true);
+                    if (!cancelled) {
+                        imagesRef.current[index] = img;
                     }
+                    resolve();
                 };
+                img.onerror = () => resolve(); // Skip failed frames
+            });
+        };
+
+        const loadProgressively = async () => {
+            // 1. Load first frame immediately for instant render
+            await loadImage(0);
+            if (cancelled) return;
+            setFirstFrameReady(true);
+            setLoadProgress(1);
+
+            // 2. Load remaining frames in batches
+            let loaded = 1;
+            for (let batchStart = 1; batchStart < TOTAL_FRAMES; batchStart += BATCH_SIZE) {
+                if (cancelled) return;
+                const batchEnd = Math.min(batchStart + BATCH_SIZE, TOTAL_FRAMES);
+                const batch: Promise<void>[] = [];
+                for (let i = batchStart; i < batchEnd; i++) {
+                    batch.push(loadImage(i));
+                }
+                await Promise.all(batch);
+                loaded += batch.length;
+                if (!cancelled) {
+                    setLoadProgress(loaded);
+                }
+            }
+
+            if (!cancelled) {
+                setAllLoaded(true);
             }
         };
-        loadImages();
+
+        loadProgressively();
+
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
+    // IntersectionObserver to pause rAF when off-screen
+    useEffect(() => {
+        const el = containerRef.current;
+        if (!el) return;
+
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                isVisibleRef.current = entry.isIntersecting;
+            },
+            { threshold: 0 }
+        );
+        observer.observe(el);
+        return () => observer.disconnect();
     }, []);
 
     // Pass container ref to hook
-    const frameIndex = useCanvasScroll(containerRef, totalFrames);
+    const frameIndex = useCanvasScroll(containerRef, TOTAL_FRAMES);
 
-    // Render loop
+    // Render loop — only runs when visible
+    const renderFrame = useCallback(() => {
+        if (!isVisibleRef.current) {
+            rafRef.current = requestAnimationFrame(renderFrame);
+            return;
+        }
+
+        const context = canvasRef.current?.getContext("2d");
+        const canvas = canvasRef.current;
+        if (!context || !canvas) {
+            rafRef.current = requestAnimationFrame(renderFrame);
+            return;
+        }
+
+        const currentFrame = Math.round(frameIndex.get());
+        const index = Math.min(Math.max(currentFrame, 0), TOTAL_FRAMES - 1);
+        const img = imagesRef.current[index];
+
+        if (img) {
+            context.clearRect(0, 0, canvas.width, canvas.height);
+            const hRatio = canvas.width / img.width;
+            const vRatio = canvas.height / img.height;
+            const ratio = Math.max(hRatio, vRatio);
+            const centerShift_x = (canvas.width - img.width * ratio) / 2;
+            const centerShift_y = (canvas.height - img.height * ratio) / 2;
+            context.drawImage(img,
+                0, 0, img.width, img.height,
+                centerShift_x, centerShift_y, img.width * ratio, img.height * ratio
+            );
+        }
+        rafRef.current = requestAnimationFrame(renderFrame);
+    }, [frameIndex]);
+
     useEffect(() => {
-        if (!loaded || images.length === 0) return;
-
-        let animationId: number;
-        const render = () => {
-            const context = canvasRef.current?.getContext("2d");
-            const canvas = canvasRef.current;
-
-            if (!context || !canvas) return;
-
-            const currentFrame = Math.round(frameIndex.get());
-            const index = Math.min(Math.max(currentFrame, 0), totalFrames - 1);
-            const img = images[index];
-
-            if (img) {
-                context.clearRect(0, 0, canvas.width, canvas.height);
-                const hRatio = canvas.width / img.width;
-                const vRatio = canvas.height / img.height;
-                const ratio = Math.max(hRatio, vRatio);
-                const centerShift_x = (canvas.width - img.width * ratio) / 2;
-                const centerShift_y = (canvas.height - img.height * ratio) / 2;
-                context.drawImage(img,
-                    0, 0, img.width, img.height,
-                    centerShift_x, centerShift_y, img.width * ratio, img.height * ratio
-                );
-            }
-            animationId = requestAnimationFrame(render);
-        };
-        render();
-        return () => cancelAnimationFrame(animationId);
-    }, [loaded, images, frameIndex]);
+        if (!firstFrameReady) return;
+        rafRef.current = requestAnimationFrame(renderFrame);
+        return () => cancelAnimationFrame(rafRef.current);
+    }, [firstFrameReady, renderFrame]);
 
     // Handle Resize
     useEffect(() => {
@@ -83,15 +149,29 @@ export default function HeroScroll() {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
+    const progressPercent = Math.round((loadProgress / TOTAL_FRAMES) * 100);
+
     return (
-        // Increased height to 800vh for longer scroll duration
         <div ref={containerRef} className="h-[800vh] relative">
             <div className="sticky top-0 h-screen w-full overflow-hidden bg-brand-dark">
-                {!loaded && (
+                {!firstFrameReady && (
                     <div className="absolute inset-0 flex items-center justify-center text-white z-50 bg-brand-dark">
                         <div className="text-2xl font-serif tracking-widest animate-pulse text-brand-gold">LOADING EXPERIENCE...</div>
                     </div>
                 )}
+
+                {firstFrameReady && !allLoaded && (
+                    <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2">
+                        <div className="w-48 h-1 bg-white/10 rounded-full overflow-hidden">
+                            <div
+                                className="h-full bg-brand-turquoise/60 rounded-full transition-all duration-300"
+                                style={{ width: `${progressPercent}%` }}
+                            />
+                        </div>
+                        <span className="text-white/30 text-xs tracking-widest">{progressPercent}%</span>
+                    </div>
+                )}
+
                 <canvas ref={canvasRef} className="w-full h-full object-cover block" />
 
                 <motion.div

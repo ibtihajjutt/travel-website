@@ -1,6 +1,6 @@
 import Navbar from '@/components/sections/Navbar';
 import Footer from '@/components/sections/Footer';
-import { motion } from 'framer-motion';
+import Image from 'next/image';
 
 const destinations = [
     {
@@ -71,10 +71,13 @@ export default function Destinations() {
                                 key={dest.id}
                                 className="group relative h-[500px] overflow-hidden rounded-lg cursor-pointer"
                             >
-                                <img
+                                <Image
                                     src={dest.image}
                                     alt={dest.name}
-                                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                                    fill
+                                    sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                                    className="object-cover transition-transform duration-700 group-hover:scale-110"
+                                    loading="lazy"
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80 group-hover:opacity-60 transition-opacity duration-500" />
 

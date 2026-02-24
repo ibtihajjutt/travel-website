@@ -1,9 +1,11 @@
-import HeroScroll from '@/components/canvas/HeroScroll';
+import dynamic from 'next/dynamic';
 import Navbar from '@/components/sections/Navbar';
-import DestinationGlobe from '@/components/sections/DestinationGlobe';
-import ContactForm from '@/components/sections/ContactForm';
-import Packages from '@/components/sections/Packages';
 import Footer from '@/components/sections/Footer';
+
+const HeroScroll = dynamic(() => import('@/components/canvas/HeroScroll'), { ssr: false });
+const DestinationGlobe = dynamic(() => import('@/components/sections/DestinationGlobe'));
+const Packages = dynamic(() => import('@/components/sections/Packages'));
+const ContactForm = dynamic(() => import('@/components/sections/ContactForm'));
 
 export default function Home() {
     return (

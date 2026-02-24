@@ -1,5 +1,6 @@
 import Navbar from '@/components/sections/Navbar';
 import Footer from '@/components/sections/Footer';
+import Image from 'next/image';
 
 export default function About() {
     return (
@@ -21,10 +22,13 @@ export default function About() {
                             </p>
                         </div>
                         <div className="aspect-[4/5] relative rounded-lg overflow-hidden border border-white/10">
-                            <img
+                            <Image
                                 src="https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?q=80&w=2940&auto=format&fit=crop"
                                 alt="Luxury Hotel Interior"
-                                className="absolute inset-0 w-full h-full object-cover"
+                                fill
+                                sizes="(max-width: 768px) 100vw, 50vw"
+                                className="object-cover"
+                                loading="lazy"
                             />
                         </div>
                     </div>

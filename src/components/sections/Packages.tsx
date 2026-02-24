@@ -1,6 +1,7 @@
 "use client";
 import React, { useRef } from 'react';
 import { motion, useScroll, useTransform, MotionValue } from 'framer-motion';
+import Image from 'next/image';
 
 const packages = [
     {
@@ -142,7 +143,7 @@ function Card({ i, title, description, price, image, color, range, progress, tar
             <div className="relative w-full h-full flex flex-col md:flex-row bg-[#1a1a1a] border border-white/10">
                 {/* Image Section - Takes more space on mobile to look better */}
                 <div className="w-full md:w-3/5 h-[40%] md:h-full relative overflow-hidden">
-                    <img src={image} alt={title} className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 hover:scale-105" />
+                    <Image src={image} alt={title} fill sizes="(max-width: 768px) 95vw, 50vw" className="object-cover transition-transform duration-700 hover:scale-105" loading="lazy" />
                     <div className="absolute inset-0 bg-black/20" />
                 </div>
 
